@@ -1,0 +1,12 @@
+git add .
+
+git commit -m 'initial commit'
+
+git push -u origin main
+
+iniciar local host para teste do vc code
+ pnpm dev
+
+rebuild igual da vercel
+ pnpm run build
+
