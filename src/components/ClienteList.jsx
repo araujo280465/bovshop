@@ -14,14 +14,43 @@ export default function ClienteList() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const [currentCliente, setCurrentCliente] = useState(null)
   const [formData, setFormData] = useState({})
   const [columns, setColumns] = useState([])
   const [allColumns, setAllColumns] = useState([])
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     fetchClientes()
   }, [])
+
+  // Handle browser back button
+  useEffect(() => {
+    if (openCreateDialog || openEditDialog) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+
+      const handlePopState = (e) => {
+        e.preventDefault()
+        if (hasChanges) {
+          setOpenConfirmDialog(true)
+        } else {
+          handleCloseDialog()
+        }
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      window.addEventListener('popstate', handlePopState)
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [openCreateDialog, openEditDialog, hasChanges])
 
   const fetchClientes = async () => {
     setLoading(true)
@@ -96,21 +125,47 @@ export default function ClienteList() {
     setOpenDeleteDialog(true)
   }
 
+  const handleCloseDialog = () => {
+    if (openCreateDialog) {
+      setOpenCreateDialog(false)
+    }
+    if (openEditDialog) {
+      setOpenEditDialog(false)
+    }
+    setHasChanges(false)
+    setFormData({})
+    setError(null)
+  }
+
   const handleCloseCreateDialog = () => {
-    setOpenCreateDialog(false)
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
   const handleCloseEditDialog = () => {
-    setOpenEditDialog(false)
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false)
+  const handleConfirmClose = () => {
+    setOpenConfirmDialog(false)
+    handleCloseDialog()
+  }
+
+  const handleCancelClose = () => {
+    setOpenConfirmDialog(false)
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value })
+    setHasChanges(true)
   }
 
   const handleCreateSubmit = async () => {
@@ -144,7 +199,8 @@ export default function ClienteList() {
       } else {
         console.log('Insert success:', data)
         fetchClientes()
-        handleCloseCreateDialog()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
       }
     } catch (error) {
       console.error('Create error:', error)
@@ -173,7 +229,8 @@ export default function ClienteList() {
       } else {
         console.log('Update success:', data)
         fetchClientes()
-        handleCloseEditDialog()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
       }
     } catch (error) {
       console.error('Edit error:', error)
@@ -202,7 +259,7 @@ export default function ClienteList() {
       } else {
         console.log('Delete success:', data)
         fetchClientes()
-        handleCloseDeleteDialog()
+        handleCloseDialog()
       }
     } catch (error) {
       console.error('Delete error:', error)
@@ -274,7 +331,18 @@ export default function ClienteList() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog}>
+      <Dialog 
+        open={openCreateDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseCreateDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
         <DialogTitle>Novo Cliente</DialogTitle>
         <DialogContent>
           {allColumns.map((col) => (
@@ -296,7 +364,18 @@ export default function ClienteList() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
+      <Dialog 
+        open={openEditDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseEditDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
         <DialogTitle>Editar Cliente</DialogTitle>
         <DialogContent>
           {allColumns.map((col) => (
@@ -317,14 +396,31 @@ export default function ClienteList() {
         </DialogActions>
       </Dialog>
 
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCancelClose}
+      >
+        <DialogTitle>Confirmar Saída</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Você tem alterações não salvas. Tem certeza que deseja sair?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClose}>Cancelar</Button>
+          <Button onClick={handleConfirmClose} color="error">Sair</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Delete Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+      <Dialog open={openDeleteDialog} onClose={handleCloseDialog}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           <Typography>Tem certeza que deseja excluir este cliente?</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog}>Cancelar</Button>
+          <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button onClick={handleDeleteSubmit} color="error">Excluir</Button>
         </DialogActions>
       </Dialog>

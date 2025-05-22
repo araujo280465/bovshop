@@ -6,22 +6,95 @@ import { Container, Typography, Paper, Table, TableBody, TableCell, TableContain
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
+import { useRouter } from 'next/navigation'
 
 export default function UsuarioList() {
+  const router = useRouter()
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const [currentUsuario, setCurrentUsuario] = useState(null)
   const [formData, setFormData] = useState({})
   const [columns, setColumns] = useState([])
   const [allColumns, setAllColumns] = useState([])
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     fetchUsuarios()
   }, [])
+
+  // Handle browser back button
+  useEffect(() => {
+    if (openCreateDialog || openEditDialog) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+
+      const handlePopState = (e) => {
+        e.preventDefault()
+        if (hasChanges) {
+          setOpenConfirmDialog(true)
+        } else {
+          handleCloseDialog()
+        }
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      window.addEventListener('popstate', handlePopState)
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [openCreateDialog, openEditDialog, hasChanges])
+
+  const handleCloseDialog = () => {
+    if (openCreateDialog) {
+      setOpenCreateDialog(false)
+    }
+    if (openEditDialog) {
+      setOpenEditDialog(false)
+    }
+    setHasChanges(false)
+    setFormData({})
+  }
+
+  const handleCloseCreateDialog = () => {
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
+  }
+
+  const handleCloseEditDialog = () => {
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
+  }
+
+  const handleConfirmClose = () => {
+    setOpenConfirmDialog(false)
+    handleCloseDialog()
+  }
+
+  const handleCancelClose = () => {
+    setOpenConfirmDialog(false)
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+    setHasChanges(true)
+  }
 
   const fetchUsuarios = async () => {
     setLoading(true)
@@ -98,23 +171,6 @@ export default function UsuarioList() {
     setOpenDeleteDialog(true)
   }
 
-  const handleCloseCreateDialog = () => {
-    setOpenCreateDialog(false)
-  }
-
-  const handleCloseEditDialog = () => {
-    setOpenEditDialog(false)
-  }
-
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false)
-  }
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-  }
-
   const handleCreateSubmit = async () => {
     try {
       // Get user from localStorage
@@ -130,29 +186,10 @@ export default function UsuarioList() {
       // Add created_at field and ensure all required fields are present
       const dataToInsert = {
         ...formData,
-        created_at: new Date().toISOString(),
-        ativo: true
+        created_at: new Date().toISOString()
       }
 
       console.log('Data to insert:', dataToInsert)
-
-      // First check if user exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('usuario')
-        .select('email')
-        .eq('email', formData.email)
-        .maybeSingle()
-
-      if (checkError) {
-        console.error('Check error:', checkError)
-        setError(checkError.message)
-        return
-      }
-
-      if (existingUser) {
-        setError('Email já cadastrado')
-        return
-      }
 
       const { data, error } = await supabase
         .from('usuario')
@@ -165,7 +202,8 @@ export default function UsuarioList() {
       } else {
         console.log('Insert success:', data)
         fetchUsuarios()
-        handleCloseCreateDialog()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
       }
     } catch (error) {
       console.error('Create error:', error)
@@ -182,19 +220,23 @@ export default function UsuarioList() {
         return
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('usuario')
         .update(formData)
         .eq('id_usuario', currentUsuario.id_usuario)
         .select()
 
       if (error) {
+        console.error('Update error:', error)
         setError(error.message)
       } else {
+        console.log('Update success:', data)
         fetchUsuarios()
-        handleCloseEditDialog()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
       }
     } catch (error) {
+      console.error('Edit error:', error)
       setError(error.message)
     }
   }
@@ -223,6 +265,10 @@ export default function UsuarioList() {
     } catch (error) {
       setError(error.message)
     }
+  }
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false)
   }
 
   return (
@@ -289,7 +335,18 @@ export default function UsuarioList() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog}>
+      <Dialog 
+        open={openCreateDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseCreateDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
         <DialogTitle>Novo Usuário</DialogTitle>
         <DialogContent>
           {allColumns.map((col) => (
@@ -312,7 +369,18 @@ export default function UsuarioList() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
+      <Dialog 
+        open={openEditDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseEditDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
         <DialogTitle>Editar Usuário</DialogTitle>
         <DialogContent>
           {allColumns.map((col) => (
@@ -331,6 +399,23 @@ export default function UsuarioList() {
         <DialogActions>
           <Button onClick={handleCloseEditDialog}>Cancelar</Button>
           <Button onClick={handleEditSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCancelClose}
+      >
+        <DialogTitle>Confirmar Saída</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Você tem alterações não salvas. Tem certeza que deseja sair?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClose}>Cancelar</Button>
+          <Button onClick={handleConfirmClose} color="error">Sair</Button>
         </DialogActions>
       </Dialog>
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Container, Paper, TextField, Button, Typography, Box, Alert, Link } from '@mui/material'
 import { supabase } from '../../supabaseClient'
+import Cookies from 'js-cookie'
 
 export default function LoginPage() {
   const searchParams = useSearchParams()
@@ -43,7 +44,7 @@ export default function LoginPage() {
         throw new Error('Senha incorreta')
       }
 
-      // Store user data in localStorage
+      // Store user data in localStorage and cookies
       const userToStore = {
         id_usuario: userData.id_usuario,
         nome: userData.nome,
@@ -53,7 +54,16 @@ export default function LoginPage() {
         created_at: userData.created_at
       }
       
+      // Store in localStorage for client-side access
       localStorage.setItem('user', JSON.stringify(userToStore))
+      
+      // Store in cookies for server-side access (middleware)
+      Cookies.set('user', JSON.stringify(userToStore), { 
+        expires: 7, // 7 days
+        path: '/',
+        sameSite: 'strict'
+      })
+
       console.log('User data stored:', userToStore)
 
       // Create a form and submit it to navigate

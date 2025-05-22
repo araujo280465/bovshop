@@ -1,1 +1,8 @@
-{}
+{
+  "/lote-imagens/page": "app/lote-imagens/page.js",
+  "/usuarios/page": "app/usuarios/page.js",
+  "/clientes/page": "app/clientes/page.js",
+  "/login/page": "app/login/page.js",
+  "/sobre/page": "app/sobre/page.js",
+  "/lotes/page": "app/lotes/page.js"
+}

@@ -31,6 +31,8 @@ export default function LoteImagensList() {
 
   const [previewUrls, setPreviewUrls] = useState({})
   const [dialogPreviewUrl, setDialogPreviewUrl] = useState(null)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     console.log('LoteImagensList: Component mounted')
@@ -64,6 +66,33 @@ export default function LoteImagensList() {
     }
     loadDialogPreview()
   }, [currentImagem])
+
+  // Handle browser back button
+  useEffect(() => {
+    if (openCreateDialog || openEditDialog) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+
+      const handlePopState = (e) => {
+        e.preventDefault()
+        if (hasChanges) {
+          setOpenConfirmDialog(true)
+        } else {
+          handleCloseDialog()
+        }
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      window.addEventListener('popstate', handlePopState)
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [openCreateDialog, openEditDialog, hasChanges])
 
   const fetchImagens = async () => {
     setLoading(true)
@@ -106,6 +135,7 @@ export default function LoteImagensList() {
     const file = event.target.files[0]
     if (file) {
       setSelectedFile(file)
+      setHasChanges(true)
       // Set a more descriptive image type based on file type
       const fileType = file.type.split('/')[0] // 'image' or 'video'
       const extension = file.name.split('.').pop().toLowerCase()
@@ -176,7 +206,13 @@ export default function LoteImagensList() {
 
   const handleEditClick = (imagem) => {
     setCurrentImagem(imagem)
-    setFormData(imagem)
+    setFormData({
+      id_lote: imagem.id_lote || '',
+      path_image: imagem.path_image || '',
+      image_type: imagem.image_type || '',
+      created_at: imagem.created_at || new Date().toISOString(),
+      altered_at: imagem.altered_at || new Date().toISOString()
+    })
     setSelectedFile(null)
     setOpenEditDialog(true)
   }
@@ -186,26 +222,54 @@ export default function LoteImagensList() {
     setOpenDeleteDialog(true)
   }
 
-  const handleCloseCreateDialog = () => {
-    setOpenCreateDialog(false)
-    setError(null)
+  const handleCloseDialog = () => {
+    if (openCreateDialog) {
+      setOpenCreateDialog(false)
+    }
+    if (openEditDialog) {
+      setOpenEditDialog(false)
+    }
+    setHasChanges(false)
+    setFormData({
+      id_lote: '',
+      path_image: '',
+      image_type: '',
+      created_at: new Date().toISOString(),
+      altered_at: new Date().toISOString()
+    })
     setSelectedFile(null)
+    setError(null)
+  }
+
+  const handleCloseCreateDialog = () => {
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
   const handleCloseEditDialog = () => {
-    setOpenEditDialog(false)
-    setError(null)
-    setSelectedFile(null)
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false)
-    setError(null)
+  const handleConfirmClose = () => {
+    setOpenConfirmDialog(false)
+    handleCloseDialog()
+  }
+
+  const handleCancelClose = () => {
+    setOpenConfirmDialog(false)
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value })
+    setHasChanges(true)
   }
 
   const handleInsert = async (e) => {
@@ -246,16 +310,19 @@ export default function LoteImagensList() {
 
       console.log('Inserting data:', insertData)
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('lote_imagens')
         .insert([insertData])
+        .select()
 
       if (error) {
         console.error('Insert error:', error)
         throw error
       }
 
-      setOpenCreateDialog(false)
+      console.log('Insert success:', data)
+      setHasChanges(false) // Reset changes before closing
+      handleCloseDialog()
       fetchImagens()
     } catch (error) {
       console.error('Error in handleInsert:', error)
@@ -288,22 +355,42 @@ export default function LoteImagensList() {
         filePath = await uploadImage(selectedFile)
       }
 
+      // Get current local date and time from machine
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      
+      // Create ISO string with local time without timezone
+      const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:00.000`
+
       const updateData = {
         ...formData,
         path_image: filePath,
-        altered_at: new Date().toISOString()
+        altered_at: localISOString
       }
 
-      const { error } = await supabase
+      console.log('Updating data:', updateData)
+
+      const { data, error } = await supabase
         .from('lote_imagens')
         .update(updateData)
         .eq('id', currentImagem.id)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Update error:', error)
+        throw error
+      }
 
-      setOpenEditDialog(false)
+      console.log('Update success:', data)
+      setHasChanges(false) // Reset changes before closing
+      handleCloseDialog()
       fetchImagens()
     } catch (error) {
+      console.error('Error in handleEditSubmit:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -637,7 +724,18 @@ export default function LoteImagensList() {
       </TableContainer>
 
       {/* Create Dialog */}
-      <Dialog open={openCreateDialog} onClose={handleCloseCreateDialog}>
+      <Dialog 
+        open={openCreateDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseCreateDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
         <DialogTitle>Nova Imagem</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
@@ -645,7 +743,7 @@ export default function LoteImagensList() {
               <InputLabel>Lote</InputLabel>
               <Select
                 name="id_lote"
-                value={formData.id_lote}
+                value={formData.id_lote || ''}
                 onChange={handleInputChange}
                 label="Lote"
               >
@@ -705,22 +803,31 @@ export default function LoteImagensList() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseCreateDialog}>Cancelar</Button>
-          <Button onClick={handleInsert} variant="contained" color="primary">
-            Criar
-          </Button>
+          <Button onClick={handleInsert} color="primary">Salvar</Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
-        <DialogTitle>Editar Arquivo</DialogTitle>
+      <Dialog 
+        open={openEditDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseEditDialog();
+        }}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle>Editar Imagem</DialogTitle>
         <DialogContent>
           <Box component="form" sx={{ mt: 2 }}>
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Lote</InputLabel>
               <Select
                 name="id_lote"
-                value={formData.id_lote}
+                value={formData.id_lote || ''}
                 onChange={handleInputChange}
                 label="Lote"
               >
@@ -801,14 +908,29 @@ export default function LoteImagensList() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog}>Cancelar</Button>
-          <Button onClick={handleEditSubmit} variant="contained" color="primary">
-            Salvar
-          </Button>
+          <Button onClick={handleEditSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCancelClose}
+      >
+        <DialogTitle>Confirmar Saída</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Você tem alterações não salvas. Tem certeza que deseja sair?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClose}>Cancelar</Button>
+          <Button onClick={handleConfirmClose} color="error">Sair</Button>
         </DialogActions>
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+      <Dialog open={openDeleteDialog} onClose={handleCloseDialog}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           <Typography>
@@ -837,7 +959,7 @@ export default function LoteImagensList() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog}>Cancelar</Button>
+          <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button onClick={handleDeleteSubmit} variant="contained" color="error">
             Excluir
           </Button>

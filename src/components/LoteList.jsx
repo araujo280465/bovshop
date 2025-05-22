@@ -21,6 +21,7 @@ export default function LoteList() {
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const [currentLote, setCurrentLote] = useState(null)
   const [formData, setFormData] = useState({
     qtd_animais: '',
@@ -37,6 +38,7 @@ export default function LoteList() {
   })
   const [columns, setColumns] = useState([])
   const [allColumns, setAllColumns] = useState([])
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     console.log('LoteList: Component mounted')
@@ -44,6 +46,33 @@ export default function LoteList() {
     fetchLotes()
     fetchClientes()
   }, [router])
+
+  // Handle browser back button
+  useEffect(() => {
+    if (openCreateDialog || openEditDialog) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+
+      const handlePopState = (e) => {
+        e.preventDefault()
+        if (hasChanges) {
+          setOpenConfirmDialog(true)
+        } else {
+          handleCloseDialog()
+        }
+      }
+
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      window.addEventListener('popstate', handlePopState)
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [openCreateDialog, openEditDialog, hasChanges])
 
   const fetchLotes = async () => {
     setLoading(true)
@@ -160,115 +189,116 @@ export default function LoteList() {
     setOpenDeleteDialog(true)
   }
 
-  const handleCloseCreateDialog = () => {
-    setOpenCreateDialog(false)
+  const handleCloseDialog = () => {
+    if (openCreateDialog) {
+      setOpenCreateDialog(false)
+    }
+    if (openEditDialog) {
+      setOpenEditDialog(false)
+    }
+    setHasChanges(false)
+    setFormData({})
     setError(null)
+  }
+
+  const handleCloseCreateDialog = () => {
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
   const handleCloseEditDialog = () => {
-    setOpenEditDialog(false)
-    setError(null)
+    if (hasChanges) {
+      setOpenConfirmDialog(true)
+    } else {
+      handleCloseDialog()
+    }
   }
 
-  const handleCloseDeleteDialog = () => {
-    setOpenDeleteDialog(false)
-    setError(null)
+  const handleConfirmClose = () => {
+    setOpenConfirmDialog(false)
+    handleCloseDialog()
+  }
+
+  const handleCancelClose = () => {
+    setOpenConfirmDialog(false)
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value })
+    setHasChanges(true)
   }
 
-  const handleInsert = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    // Validate all required fields
-    const requiredFields = ['qtd_animais', 'tipo_animais', 'foto_animais', 'local_cidade', 'local_estado', 'id_Dono_lote', 'valido_de', 'valido_ate', 'id_comprador_lote', 'Peso_medio', 'Preco_lote']
-    const missingFields = requiredFields.filter(field => !formData[field])
-    
-    if (missingFields.length > 0) {
-      setError(`Por favor, preencha todos os campos obrigatórios: ${missingFields.join(', ')}`)
-      setLoading(false)
-      return
-    }
-
-    // Validate dates
-    if (new Date(formData.valido_ate) < new Date(formData.valido_de)) {
-      setError('A data "Válido de" deve ser menor ou igual à data "Até"')
-      setLoading(false)
-      return
-    }
-
+  const handleCreateSubmit = async () => {
     try {
-      // Create a copy of formData and trim tipo_animais
-      const trimmedData = {
-        ...formData,
-        tipo_animais: formData.tipo_animais.trim()
+      // Get user from localStorage
+      const userStr = localStorage.getItem('user')
+      if (!userStr) {
+        setError('Usuário não autenticado')
+        return
       }
 
-      const { error } = await supabase
+      const user = JSON.parse(userStr)
+      console.log('Logged in user:', user)
+      
+      // Add created_at field and ensure all required fields are present
+      const dataToInsert = {
+        ...formData,
+        created_at: new Date().toISOString()
+      }
+
+      console.log('Data to insert:', dataToInsert)
+
+      const { data, error } = await supabase
         .from('lote')
-        .insert([trimmedData])
+        .insert([dataToInsert])
+        .select()
 
-      if (error) throw error
-
-      setFormData({
-        qtd_animais: '',
-        tipo_animais: '',
-        foto_animais: '',
-        local_cidade: '',
-        local_estado: '',
-        id_Dono_lote: '',
-        valido_de: '',
-        valido_ate: '',
-        id_comprador_lote: '',
-        Peso_medio: '',
-        Preco_lote: ''
-      })
-      setOpenCreateDialog(false)
-      fetchLotes()
+      if (error) {
+        console.error('Insert error:', error)
+        setError(error.message)
+      } else {
+        console.log('Insert success:', data)
+        fetchLotes()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
+      }
     } catch (error) {
+      console.error('Create error:', error)
       setError(error.message)
-    } finally {
-      setLoading(false)
     }
   }
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    // Validate dates
-    if (new Date(formData.valido_ate) < new Date(formData.valido_de)) {
-      setError('A data "Válido de" deve ser menor ou igual à data "Até"')
-      setLoading(false)
-      return
-    }
-
+  const handleEditSubmit = async () => {
     try {
-      // Create a copy of formData and trim tipo_animais
-      const trimmedData = {
-        ...formData,
-        tipo_animais: formData.tipo_animais.trim()
+      // Get user from localStorage
+      const userStr = localStorage.getItem('user')
+      if (!userStr) {
+        setError('Usuário não autenticado')
+        return
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('lote')
-        .update(trimmedData)
+        .update(formData)
         .eq('id_lote', currentLote.id_lote)
+        .select()
 
-      if (error) throw error
-
-      setOpenEditDialog(false)
-      fetchLotes()
+      if (error) {
+        console.error('Update error:', error)
+        setError(error.message)
+      } else {
+        console.log('Update success:', data)
+        fetchLotes()
+        setHasChanges(false) // Reset changes before closing
+        handleCloseDialog()
+      }
     } catch (error) {
+      console.error('Edit error:', error)
       setError(error.message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -278,7 +308,7 @@ export default function LoteList() {
       setError(error.message)
     } else {
       fetchLotes()
-      handleCloseDeleteDialog()
+      handleCloseDialog()
     }
   }
 
@@ -358,19 +388,20 @@ export default function LoteList() {
       {/* Create Dialog */}
       <Dialog 
         open={openCreateDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseCreateDialog();
+        }}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            minHeight: '80vh',
-            maxHeight: '90vh'
-          }
-        }}
+        disableEscapeKeyDown
       >
         <DialogTitle>Novo Lote</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          <form onSubmit={handleInsert}>
+          <form onSubmit={handleCreateSubmit}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2, mt: 1 }}>
               <TextField
                 name="qtd_animais"
@@ -482,32 +513,26 @@ export default function LoteList() {
                 required
               />
             </Box>
-            <DialogActions sx={{ mt: 2 }}>
-              <Button onClick={handleCloseCreateDialog}>Cancelar</Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                disabled={loading}
-              >
-                {loading ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </DialogActions>
           </form>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCreateDialog}>Cancelar</Button>
+          <Button onClick={handleCreateSubmit} color="primary">Salvar</Button>
+        </DialogActions>
       </Dialog>
 
       {/* Edit Dialog */}
       <Dialog 
         open={openEditDialog} 
+        onClose={(event, reason) => {
+          if (reason === 'backdropClick') {
+            return;
+          }
+          handleCloseEditDialog();
+        }}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            minHeight: '80vh',
-            maxHeight: '90vh'
-          }
-        }}
+        disableEscapeKeyDown
       >
         <DialogTitle>Editar Lote</DialogTitle>
         <DialogContent>
@@ -624,29 +649,39 @@ export default function LoteList() {
                 required
               />
             </Box>
-            <DialogActions sx={{ mt: 2 }}>
-              <Button onClick={handleCloseEditDialog}>Cancelar</Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                disabled={loading}
-              >
-                {loading ? 'Salvando...' : 'Salvar'}
-              </Button>
-            </DialogActions>
           </form>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditDialog}>Cancelar</Button>
+          <Button onClick={handleEditSubmit} color="primary">Salvar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCancelClose}
+      >
+        <DialogTitle>Confirmar Saída</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Você tem alterações não salvas. Tem certeza que deseja sair?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClose}>Cancelar</Button>
+          <Button onClick={handleConfirmClose} color="error">Sair</Button>
+        </DialogActions>
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+      <Dialog open={openDeleteDialog} onClose={handleCloseDialog}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>
           <Typography>Tem certeza que deseja excluir este lote?</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDeleteDialog}>Cancelar</Button>
+          <Button onClick={handleCloseDialog}>Cancelar</Button>
           <Button onClick={handleDeleteSubmit} color="error">Excluir</Button>
         </DialogActions>
       </Dialog>
