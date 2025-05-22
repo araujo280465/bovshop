@@ -1,11 +1,16 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import { useEffect, useState } from 'react'
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter'
+import { ThemeProvider } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import theme from '../theme'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -52,29 +57,36 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Sistema de Lotes
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button color="inherit" href="/">Home</Button>
-              <Button color="inherit" href="/sobre">Sobre</Button>
-              {isAuthenticated ? (
-                <>
-                  <Button color="inherit" href="/lotes">Lotes</Button>
-                  <Button color="inherit" href="/lote-imagens">Imagens de Lote</Button>
-                  <Button color="inherit" href="/usuarios">Usuários</Button>
-                  <Button color="inherit" href="/clientes">Clientes</Button>
-                  <Button color="inherit" onClick={handleLogout}>Sair</Button>
-                </>
-              ) : (
-                <Button color="inherit" href="/login">Login</Button>
-              )}
-            </Box>
-          </Toolbar>
-        </AppBar>
-        {children}
+        <AppRouterCacheProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Suspense fallback={<div>Loading...</div>}>
+              <AppBar position="static">
+                <Toolbar>
+                  <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                    Sistema de Lotes
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button color="inherit" href="/">Home</Button>
+                    <Button color="inherit" href="/sobre">Sobre</Button>
+                    {isAuthenticated ? (
+                      <>
+                        <Button color="inherit" href="/lotes">Lotes</Button>
+                        <Button color="inherit" href="/lote-imagens">Imagens de Lote</Button>
+                        <Button color="inherit" href="/usuarios">Usuários</Button>
+                        <Button color="inherit" href="/clientes">Clientes</Button>
+                        <Button color="inherit" onClick={handleLogout}>Sair</Button>
+                      </>
+                    ) : (
+                      <Button color="inherit" href="/login">Login</Button>
+                    )}
+                  </Box>
+                </Toolbar>
+              </AppBar>
+              {children}
+            </Suspense>
+          </ThemeProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   )

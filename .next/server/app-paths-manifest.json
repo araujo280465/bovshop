@@ -1,8 +1,11 @@
 {
-  "/lote-imagens/page": "app/lote-imagens/page.js",
-  "/usuarios/page": "app/usuarios/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/clientes/page": "app/clientes/page.js",
   "/login/page": "app/login/page.js",
+  "/lotes/page": "app/lotes/page.js",
+  "/lote-imagens/page": "app/lote-imagens/page.js",
+  "/page": "app/page.js",
+  "/signup/page": "app/signup/page.js",
   "/sobre/page": "app/sobre/page.js",
-  "/lotes/page": "app/lotes/page.js"
+  "/usuarios/page": "app/usuarios/page.js"
 }

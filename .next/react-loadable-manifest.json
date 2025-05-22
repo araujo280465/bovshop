@@ -1,30 +1,39 @@
 {
   "..\\node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "..\\node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "id": 485,
     "files": []
   },
   "..\\node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch": {
-    "id": "..\\node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch",
+    "id": 485,
     "files": []
   },
   "..\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch": {
-    "id": "..\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch",
+    "id": 485,
     "files": []
   },
   "..\\node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "..\\node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "id": 485,
     "files": []
   },
   "app\\lote-imagens\\page.jsx -> ../../components/LoteImagensList": {
-    "id": "app\\lote-imagens\\page.jsx -> ../../components/LoteImagensList",
+    "id": 9129,
     "files": [
-      "static/chunks/_app-pages-browser_src_components_LoteImagensList_jsx.js"
+      "static/chunks/242-d87d750ea77630df.js",
+      "static/chunks/923-6c728e8751107f3c.js",
+      "static/chunks/695-5999efa4a4dbfd80.js",
+      "static/chunks/457-3ac9f47f01cd84e6.js",
+      "static/chunks/233-9718c2ebae8bbed1.js",
+      "static/chunks/5.7fa9facb8f62ab46.js",
+      "static/chunks/129.2f75f63faadf5b9b.js"
     ]
   },
   "app\\lotes\\page.jsx -> ../../components/LoteList": {
-    "id": "app\\lotes\\page.jsx -> ../../components/LoteList",
+    "id": 2443,
     "files": [
-      "static/chunks/_app-pages-browser_src_components_LoteList_jsx.js"
+      "static/chunks/695-5999efa4a4dbfd80.js",
+      "static/chunks/457-3ac9f47f01cd84e6.js",
+      "static/chunks/233-9718c2ebae8bbed1.js",
+      "static/chunks/443.657b5350aded07bb.js"
     ]
   }
 }

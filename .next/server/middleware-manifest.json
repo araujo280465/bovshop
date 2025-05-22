@@ -10,15 +10,30 @@
       "page": "/",
       "matchers": [
         {
-          "regexp": "^/.*$",
-          "originalSource": "/:path*"
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/lotes(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+          "originalSource": "/lotes/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/usuarios(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+          "originalSource": "/usuarios/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/clientes(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+          "originalSource": "/clientes/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/lote-imagens(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(.json)?[\\/#\\?]?$",
+          "originalSource": "/lote-imagens/:path*"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "development",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "8QZD5WdYA4QkMR7SdGi6SQZEIYyKhriHv7b/msYee5E="
+        "__NEXT_BUILD_ID": "Tp1raPrDuF3uOLjGZ2Jta",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "Pm6LN3dj1xOuC07KT52wQ6bcPUG4E5yg6id6eIma/ss=",
+        "__NEXT_PREVIEW_MODE_ID": "91b5ca18a43e36928fb2bf6b9034cccd",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "42ec6a7aaa9bceff32aeac2ec117c061354c7a1965624f750eb9d84102e68816",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "ab503fae3a2d025e6a2a98dd173e0e1317962d421ec2c34d56a2920c465a13c5"
       }
     }
   },
